@@ -24,37 +24,45 @@
 `timescale 1ps / 1ps
 
 
-module axis_dsp_linear_func
+module axis_dsp_linear_func #
 (
-    input   wire            axis_aresetn,
-    input   wire            axis_aclk,
+    parameter TUSER_WIDTH = 1
+)
+(
+    input   wire                        axis_aresetn,
+    input   wire                        axis_aclk,
     
-    input   wire            dsp_func_sel,
+    input   wire                        dsp_func_sel,
 
-    input   wire    [17:0]  dsp_D_s_axis_tdata,
-    input   wire            dsp_D_s_axis_tvalid,
-    output  wire            dsp_D_s_axis_tready,
-    input   wire            dsp_D_s_axis_tlast,
+    input   wire    [17:0]              dsp_D_s_axis_tdata,
+    input   wire                        dsp_D_s_axis_tvalid,
+    output  wire                        dsp_D_s_axis_tready,
+    input   wire                        dsp_D_s_axis_tlast,
+    input   wire    [TUSER_WIDTH - 1:0] dsp_D_s_axis_tuser,
     
-    input   wire    [17:0]  dsp_A_s_axis_tdata,
-    input   wire            dsp_A_s_axis_tvalid,
-    output  wire            dsp_A_s_axis_tready,
-    input   wire            dsp_A_s_axis_tlast,
+    input   wire    [17:0]              dsp_A_s_axis_tdata,
+    input   wire                        dsp_A_s_axis_tvalid,
+    output  wire                        dsp_A_s_axis_tready,
+    input   wire                        dsp_A_s_axis_tlast,
+    input   wire    [TUSER_WIDTH - 1:0] dsp_A_s_axis_tuser,
     
-    input   wire    [17:0]  dsp_B_s_axis_tdata,
-    input   wire            dsp_B_s_axis_tvalid,
-    output  wire            dsp_B_s_axis_tready,
-    input   wire            dsp_B_s_axis_tlast,
+    input   wire    [17:0]              dsp_B_s_axis_tdata,
+    input   wire                        dsp_B_s_axis_tvalid,
+    output  wire                        dsp_B_s_axis_tready,
+    input   wire                        dsp_B_s_axis_tlast,
+    input   wire    [TUSER_WIDTH - 1:0] dsp_B_s_axis_tuser,
     
-    input   wire    [47:0]  dsp_C_s_axis_tdata,
-    input   wire            dsp_C_s_axis_tvalid,
-    output  wire            dsp_C_s_axis_tready,
-    input   wire            dsp_C_s_axis_tlast,
+    input   wire    [47:0]              dsp_C_s_axis_tdata,
+    input   wire                        dsp_C_s_axis_tvalid,
+    output  wire                        dsp_C_s_axis_tready,
+    input   wire                        dsp_C_s_axis_tlast,
+    input   wire    [TUSER_WIDTH - 1:0] dsp_C_s_axis_tuser,
     
-    output  wire    [47:0]  dsp_P_m_axis_tdata,
-    output  wire            dsp_P_m_axis_tvalid,
-    input   wire            dsp_P_m_axis_tready,
-    output  wire            dsp_P_m_axis_tlast
+    output  wire    [47:0]              dsp_P_m_axis_tdata,
+    output  wire                        dsp_P_m_axis_tvalid,
+    input   wire                        dsp_P_m_axis_tready,
+    output  wire                        dsp_P_m_axis_tlast,
+    output  wire    [TUSER_WIDTH - 1:0] dsp_P_m_axis_tuser
 );
     
     localparam  PIPE_DATA_IN_WIDTH  = 1;
@@ -66,19 +74,22 @@ module axis_dsp_linear_func
 
     wire    pipe_cen;
     
-    wire    s_axis_tready;
-    wire    s_axis_tvalid = dsp_D_s_axis_tvalid & dsp_A_s_axis_tvalid & dsp_B_s_axis_tvalid & dsp_C_s_axis_tvalid;
-    wire    s_axis_tlast  = dsp_D_s_axis_tlast  & dsp_A_s_axis_tlast  & dsp_B_s_axis_tlast  & dsp_C_s_axis_tlast;
+    wire                        s_axis_tready;
+    wire                        s_axis_tvalid = dsp_D_s_axis_tvalid & dsp_A_s_axis_tvalid & dsp_B_s_axis_tvalid & dsp_C_s_axis_tvalid;
+    wire                        s_axis_tlast  = dsp_D_s_axis_tlast  & dsp_A_s_axis_tlast  & dsp_B_s_axis_tlast  & dsp_C_s_axis_tlast;
+    wire    [TUSER_WIDTH - 1:0] s_axis_tuser  = dsp_D_s_axis_tuser  | dsp_A_s_axis_tuser  | dsp_B_s_axis_tuser  | dsp_C_s_axis_tuser;
     
-    wire    m_axis_tready = dsp_P_m_axis_tready;
-    wire    m_axis_tvalid;
-    wire    m_axis_tlast;
+    wire                        m_axis_tready = dsp_P_m_axis_tready;
+    wire                        m_axis_tvalid;
+    wire                        m_axis_tlast;
+    wire    [TUSER_WIDTH - 1:0] m_axis_tuser;
+    
     
     axis_pipeliner #
     (
         .PIPE_DATA_IN_WIDTH ( PIPE_DATA_IN_WIDTH  ),
         .PIPE_DATA_OUT_WIDTH( PIPE_DATA_OUT_WIDTH ),
-        .PIPE_QUAL_WIDTH    ( PIPE_QUAL_WIDTH     ),
+        .PIPE_QUAL_WIDTH    ( TUSER_WIDTH         ),
         .PIPE_STAGES        ( PIPE_STAGES         )
     )
     axis_pipeliner
@@ -87,13 +98,13 @@ module axis_dsp_linear_func
         .axis_aresetn   ( axis_aresetn  ),
         
         .s_axis_tdata   ( 1'b0          ),
-        .s_axis_tuser   ( 1'b0          ),
+        .s_axis_tuser   ( s_axis_tuser  ),
         .s_axis_tvalid  ( s_axis_tvalid ),
         .s_axis_tready  ( s_axis_tready ),
         .s_axis_tlast   ( s_axis_tlast  ),
         
         .m_axis_tdata   (),
-        .m_axis_tuser   (),
+        .m_axis_tuser   ( m_axis_tuser  ),
         .m_axis_tvalid  ( m_axis_tvalid ),
         .m_axis_tready  ( m_axis_tready ),
         .m_axis_tlast   ( m_axis_tlast  ),
@@ -105,6 +116,7 @@ module axis_dsp_linear_func
     
     assign dsp_P_m_axis_tvalid = m_axis_tvalid;
     assign dsp_P_m_axis_tlast  = m_axis_tlast;
+    assign dsp_P_m_axis_tuser  = m_axis_tuser;
     
     assign dsp_D_s_axis_tready = s_axis_tready;
     assign dsp_A_s_axis_tready = s_axis_tready;

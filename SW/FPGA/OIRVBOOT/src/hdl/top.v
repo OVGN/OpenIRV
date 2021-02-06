@@ -149,7 +149,15 @@ module top
     
     assign ext_gpio_1_buf  = 1'bz;
     assign ext_gpio_1_dir  = GPIO_DIR_OUTPUT;
-    assign ext_gpio_1_oc = 1'b1;  
+    assign ext_gpio_1_oc = 1'b1;
+    
+    assign gpio_sensor = {20{1'bz}};
+    
+    assign sensor_bias_boost_pwr_ena = 1'b0;
+    assign sensor_core_pwr_ena = 1'b0;
+    assign sensor_bias_pwr_ena = 1'b0;
+    assign sensor_io_pwr_ena_n = 1'b1;
+    assign sensor_bias_volt_sel = 1'b0;
     
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
     
@@ -292,39 +300,6 @@ module top
     
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
     
-    wire sensor_bias;
-    wire sensor_clk_fwd;
-    wire sensor_cmd;
-    wire sensor_data_even;
-    wire sensor_data_odd;
-    wire sensor_ena;
-    
-    assign gpio_sensor[0]  = 1'bz;
-    assign gpio_sensor[1]  = 1'bz;
-    assign gpio_sensor[2]  = sensor_ena;
-    assign gpio_sensor[3]  = 1'bz;
-    assign gpio_sensor[4]  = 1'bz;
-    assign gpio_sensor[5]  = sensor_bias;
-    assign gpio_sensor[6]  = 1'bz;
-    assign gpio_sensor[7]  = 1'bz;
-    assign gpio_sensor[8]  = 1'bz;
-    assign gpio_sensor[9]  = 1'bz;
-    assign gpio_sensor[10] = 1'bz;
-    assign gpio_sensor[11] = 1'bz;
-    assign gpio_sensor[12] = 1'bz;
-    assign gpio_sensor[13] = sensor_clk_fwd;
-    assign gpio_sensor[14] = 1'bz;
-    assign gpio_sensor[15] = 1'bz;
-    assign gpio_sensor[16] = sensor_cmd;
-    assign gpio_sensor[17] = 1'bz;
-    assign gpio_sensor[18] = 1'bz;
-    assign gpio_sensor[19] = 1'bz;
-    
-    assign sensor_data_odd  = gpio_sensor[3];
-    assign sensor_data_even = gpio_sensor[15];
-    
-/*-------------------------------------------------------------------------------------------------------------------------------------*/
-    
     SoC SoC_i
     (
         .extclk                     (extclk),
@@ -332,15 +307,8 @@ module top
         .fd_clk                     (pwr_fd_clk),
         .fd_dat                     (pwr_fd_dat),
         
-        .sensor_bias_boost_pwr_ena  (sensor_bias_boost_pwr_ena),
-        .sensor_core_pwr_ena        (sensor_core_pwr_ena),
-        .sensor_bias_pwr_ena        (sensor_bias_pwr_ena),
-        .sensor_io_pwr_ena_n        (sensor_io_pwr_ena_n),
-        .sensor_bias_volt_sel       (sensor_bias_volt_sel),
-        
         .shtr_drive_ena             (shtr_drive_ena),
         .focus_drive_ena            (focus_drive_ena),
-        .focus_sensor_pulse         (focus_sensor_pulse),
         
         .act_led                    ({fx2_pa3_led_act_r, fx2_pa1_led_act_y}),
         
@@ -390,13 +358,6 @@ module top
         .QSPI_io3_i                 (QSPI_io3_i),
         .QSPI_io3_o                 (QSPI_io3_o),
         .QSPI_io3_t                 (QSPI_io3_t),
-        
-        .sensor_bias                (sensor_bias),
-        .sensor_clk_fwd             (sensor_clk_fwd),
-        .sensor_cmd                 (sensor_cmd),
-        .sensor_data_even           (sensor_data_even),
-        .sensor_data_odd            (sensor_data_odd),
-        .sensor_ena                 (sensor_ena),
         
         .HyperBus_R0_hb_ck_p        (hram_r0_ck_p),
         .HyperBus_R0_hb_ck_n        (hram_r0_ck_n),
