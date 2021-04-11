@@ -24,7 +24,10 @@
 `timescale 1ps / 1ps
 
 
-module s_axis_stub
+module s_axis_stub #
+(
+    parameter   TREADY = 1'b0
+)
 (
     (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME S_RSTIF, POLARITY ACTIVE_LOW" *)
     (* X_INTERFACE_INFO = "xilinx.com:signal:reset:1.0 S_RSTIF RST" *)
@@ -42,7 +45,7 @@ module s_axis_stub
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_STUB TUSER"  *) input   wire    [3:0]   s_axis_stub_tuser
 );
     
-    assign s_axis_stub_tready = 1'b0;
+    assign s_axis_stub_tready = TREADY;
 
 endmodule
 

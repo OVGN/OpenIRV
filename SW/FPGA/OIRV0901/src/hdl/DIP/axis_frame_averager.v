@@ -2,8 +2,8 @@
  * ----------------------------------------------------------------------------
  *  Project:  OpenIRV
  *  Filename: axis_frame_averager.v
- *  Purpose:  AXI4-Stream frame averaging module. Temporary averaging buffer
- *            is located in any external memory array.
+ *  Purpose:  AXI4-Stream frame averaging module. Averaging buffer can be
+ *            located in any external memory.
  * ----------------------------------------------------------------------------
  *  Copyright © 2020-2021, Vaagn Oganesyan <ovgn@protonmail.com>
  *  

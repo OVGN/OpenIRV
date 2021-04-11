@@ -528,7 +528,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>e95b4e95</spirit:value>
+            <spirit:value>afd5fd40</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -550,7 +550,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>8dd4f094</spirit:value>
+            <spirit:value>557b3a51</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -635,7 +635,17 @@
               <spirit:viewNameRef>xilinx_verilogbehavioralsimulation</spirit:viewNameRef>
             </spirit:wireTypeDef>
           </spirit:wireTypeDefs>
+          <spirit:driver>
+            <spirit:defaultValue spirit:format="long">0</spirit:defaultValue>
+          </spirit:driver>
         </spirit:wire>
+        <spirit:vendorExtensions>
+          <xilinx:portInfo>
+            <xilinx:enablement>
+              <xilinx:isEnabled xilinx:resolve="dependent" xilinx:id="PORT_ENABLEMENT.clk_idelay_ref" xilinx:dependency="spirit:decode(id(&apos;MODELPARAM_VALUE.C_IDELAYCTRL_INTEGRATED&apos;))>0 or spirit:decode(id(&apos;MODELPARAM_VALUE.C_RWDS_USE_IDELAY&apos;))>0 or spirit:decode(id(&apos;MODELPARAM_VALUE.C_DQ7_USE_IDELAY&apos;))>0 or spirit:decode(id(&apos;MODELPARAM_VALUE.C_DQ6_USE_IDELAY&apos;))>0 or spirit:decode(id(&apos;MODELPARAM_VALUE.C_DQ5_USE_IDELAY&apos;))>0 or spirit:decode(id(&apos;MODELPARAM_VALUE.C_DQ4_USE_IDELAY&apos;))>0 or spirit:decode(id(&apos;MODELPARAM_VALUE.C_DQ3_USE_IDELAY&apos;))>0 or spirit:decode(id(&apos;MODELPARAM_VALUE.C_DQ2_USE_IDELAY&apos;))>0 or spirit:decode(id(&apos;MODELPARAM_VALUE.C_DQ1_USE_IDELAY&apos;))>0 or spirit:decode(id(&apos;MODELPARAM_VALUE.C_DQ0_USE_IDELAY&apos;))>0">true</xilinx:isEnabled>
+            </xilinx:enablement>
+          </xilinx:portInfo>
+        </spirit:vendorExtensions>
       </spirit:port>
       <spirit:port>
         <spirit:name>s_axi_aclk</spirit:name>
@@ -1912,7 +1922,7 @@
       <spirit:file>
         <spirit:name>hdl/axi_hbmc.v</spirit:name>
         <spirit:fileType>verilogSource</spirit:fileType>
-        <spirit:userFileType>CHECKSUM_a11e6596</spirit:userFileType>
+        <spirit:userFileType>CHECKSUM_ace05265</spirit:userFileType>
       </spirit:file>
     </spirit:fileSet>
     <spirit:fileSet>
@@ -2339,20 +2349,34 @@
       </xilinx:xpmLibraries>
       <xilinx:vendorDisplayName>OVGN</xilinx:vendorDisplayName>
       <xilinx:vendorURL>https://github.com/OVGN/OpenHBMC</xilinx:vendorURL>
-      <xilinx:coreRevision>41</xilinx:coreRevision>
+      <xilinx:coreRevision>43</xilinx:coreRevision>
       <xilinx:upgrades>
         <xilinx:canUpgradeFrom>xilinx.com:user:OpenHBMC:1.0</xilinx:canUpgradeFrom>
       </xilinx:upgrades>
-      <xilinx:coreCreationDateTime>2020-12-17T01:21:03Z</xilinx:coreCreationDateTime>
+      <xilinx:coreCreationDateTime>2021-02-14T19:46:26Z</xilinx:coreCreationDateTime>
       <xilinx:tags>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@34dcad44_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@56b165d1_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@501dabd_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@690c2498_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@3bb80e11_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@4fd640b9_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@11ee5358_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@452c8cca_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@3692e113_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@4526df9b_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@18404cff_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@3fa4d93d_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@7781feca_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
+        <xilinx:tag xilinx:name="ui.data.coregen.dd@6bbf2e75_ARCHIVE_LOCATION">d:/Work/Projects/OpenHBMC/OpenHBMC/OpenHBMC</xilinx:tag>
       </xilinx:tags>
     </xilinx:coreExtensions>
     <xilinx:packagingInfo>
       <xilinx:xilinxVersion>2020.2</xilinx:xilinxVersion>
       <xilinx:checksum xilinx:scope="busInterfaces" xilinx:value="784528ef"/>
       <xilinx:checksum xilinx:scope="memoryMaps" xilinx:value="96ea5e8c"/>
-      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="116d7b6a"/>
-      <xilinx:checksum xilinx:scope="ports" xilinx:value="d3d8d609"/>
+      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="2f826f97"/>
+      <xilinx:checksum xilinx:scope="ports" xilinx:value="8e133775"/>
       <xilinx:checksum xilinx:scope="hdlParameters" xilinx:value="0fed9391"/>
       <xilinx:checksum xilinx:scope="parameters" xilinx:value="f57b15e4"/>
     </xilinx:packagingInfo>

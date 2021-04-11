@@ -2,7 +2,7 @@
  * ----------------------------------------------------------------------------
  *  Project:  OpenIRV
  *  Filename: ISC0901_ctrl.v
- *  Purpose:  
+ *  Purpose:  ISC0901 control and data management module.
  * ----------------------------------------------------------------------------
  *  Copyright © 2020-2021, Vaagn Oganesyan <ovgn@protonmail.com>
  *  

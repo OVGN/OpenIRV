@@ -3,7 +3,7 @@
  *  Project:  OpenIRV
  *  Filename: edge_to_pulse.v
  *  Purpose:  Current module generates a positive pulse of specified duration
- *            for each incoming positive edge.
+ *            for each incoming edge (selectable positive/negative/any).
  * ----------------------------------------------------------------------------
  *  Copyright © 2020-2021, Vaagn Oganesyan <ovgn@protonmail.com>
  *  
@@ -58,7 +58,7 @@ module edge_to_pulse #
             case (state)
                 1'b0: begin
                     delay_tc <= 32'd0;
-                    if (EDGE_TYPE == "BOTH") begin
+                    if (EDGE_TYPE == "ANY") begin
                         state <= (edge_in ^ in_1)? 1'b1 : 1'b0;
                     end else begin
                         if (EDGE_TYPE == "RISING") begin

@@ -192,6 +192,7 @@ module axi_hbmc #
     reg     fifo_rst = 1'b1;
     reg     idelayctrl_rst = 1'b1;
     wire    idelayctrl_rdy_sync;
+    wire    clk_idelay;
     
     reg     wr_xfer_done = 1'b1;
     reg     rd_xfer_done = 1'b1;
@@ -268,7 +269,6 @@ module axi_hbmc #
             wire    idelayctrl_rdy;
         
             (* IODELAY_GROUP = C_IODELAY_GROUP_ID *)
-            
             IDELAYCTRL IDELAYCTRL_inst
             (
                 .RST    ( idelayctrl_rst ),
@@ -283,9 +283,12 @@ module axi_hbmc #
                 .d      ( idelayctrl_rdy      ),
                 .q      ( idelayctrl_rdy_sync )
             );
-    
+            
+            assign clk_idelay = clk_idelay_ref;
+            
         end else begin
             assign idelayctrl_rdy_sync = 1'b1;
+            assign clk_idelay = 1'b0;
         end
     endgenerate
 
@@ -572,7 +575,7 @@ module axi_hbmc #
         .arst               ( hbmc_rst              ),
         .clk_hbmc_0         ( clk_hbmc_0            ),
         .clk_hbmc_270       ( clk_hbmc_270          ),
-        .clk_idelay_ref     ( clk_idelay_ref        ),
+        .clk_idelay_ref     ( clk_idelay            ),
         
         .cmd_req            ( cmd_req_dst           ),
         .cmd_ack            ( cmd_ack_dst           ),

@@ -39,8 +39,8 @@ module lcd_ctrl #
     (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 S_CLKIF CLK" *)
     input   wire    s_axis_aclk,
     
-    (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME S_AXIS_IMG, TDATA_NUM_BYTES 2, TDEST_WIDTH 0, TID_WIDTH 0, TUSER_WIDTH 1, HAS_TREADY 1, HAS_TSTRB 0, HAS_TKEEP 0, HAS_TLAST 0" *)
-    (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_IMG TDATA"  *)  input   wire    [15:0]  s_axis_img_tdata,
+    (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME S_AXIS_IMG, TDATA_NUM_BYTES 4, TDEST_WIDTH 0, TID_WIDTH 0, TUSER_WIDTH 1, HAS_TREADY 1, HAS_TSTRB 0, HAS_TKEEP 0, HAS_TLAST 0" *)
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_IMG TDATA"  *)  input   wire    [31:0]  s_axis_img_tdata,
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_IMG TVALID" *)  input   wire            s_axis_img_tvalid,
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_IMG TREADY" *)  output  reg             s_axis_img_tready = 1'b0,
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_IMG TUSER"  *)  input   wire            s_axis_img_tuser,

@@ -16,10 +16,10 @@
 # data   _XXXXXXXXXXXXXXXXX____Rise_Data____XXXXXXXXXXXXXXXXX____Fall_Data____XX
 #
 
-create_clock -name hb_rwds_strb -period 10.000 [get_ports hb_rwds]
+create_clock -name hb_rwds_strb -period 7.700 [get_ports hb_rwds]
 
 set input_clock         hb_rwds_strb;      # Name of input clock
-set input_clock_period  10.000;            # Period of input clock (full-period)
+set input_clock_period  7.700;             # Period of input clock (full-period)
 set skew_bre            0.450;             # Data invalid before the rising clock edge
 set skew_are            0.450;             # Data invalid after the rising clock edge
 set skew_bfe            0.450;             # Data invalid before the falling clock edge

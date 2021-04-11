@@ -2,8 +2,10 @@
  * ----------------------------------------------------------------------------
  *  Project:  OpenIRV
  *  Filename: vdma_ctrl.v
- *  Purpose:  Video DMA control module. Used to stream video data to
- *            different consumers over AXI4-Stream interface. 
+ *  Purpose:  Video DMA control module. Used to stream video data to different
+ *            consumers over AXI4-Stream interface. Supports per channel
+ *            configurable burst length, address increment, dual buffering,
+ *            interlaced/progressive modes.
  * ----------------------------------------------------------------------------
  *  Copyright © 2020-2021, Vaagn Oganesyan <ovgn@protonmail.com>
  *  
@@ -56,7 +58,7 @@ module vdma_ctrl #
     (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_LITE ARVALID" *)    input   wire                                s_axi_arvalid,
     (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_LITE ARREADY" *)    output  reg                                 s_axi_arready   = 1'b0,
     
-    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_LITE RDATA"   *)    output  reg     [31:0]                      s_axi_rdata = {32{1'b0}},
+    (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_LITE RDATA"   *)    output  reg     [31:0]                      s_axi_rdata     = {32{1'b0}},
     (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_LITE RRESP"   *)    output  reg     [1:0]                       s_axi_rresp     = 2'b00,
     (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_LITE RVALID"  *)    output  reg                                 s_axi_rvalid    = 1'b0,
     (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 S_AXI_LITE RREADY"  *)    input   wire                                s_axi_rready,
@@ -347,7 +349,24 @@ module vdma_ctrl #
             end
         end
     end
-
+    
+    
+    /* Selecting double buffering "ping-pong" buffers */
+    wire    ch0_buf_sel = ch0_config[31];
+    wire    ch1_buf_sel = ch1_config[31];
+    wire    ch2_buf_sel = ch2_config[31];
+    wire    ch3_buf_sel = ch3_config[31];
+    wire    ch4_buf_sel = ch4_config[31];
+    wire    ch5_buf_sel = ch5_config[31];
+    
+    /* Progressive or interlaced data streaming mode */
+     wire    ch0_interlaced = ch0_config[30];
+     wire    ch1_interlaced = ch1_config[30];
+     wire    ch2_interlaced = ch2_config[30];
+     wire    ch3_interlaced = ch3_config[30];
+     wire    ch4_interlaced = ch4_config[30];
+     wire    ch5_interlaced = ch5_config[30];
+    
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
     
     localparam  [3:0]   DMA_XFER_OKAY   = 4'b1000,
@@ -451,12 +470,26 @@ module vdma_ctrl #
     reg         [3:0]   state       = ST_RESET;
     reg         [3:0]   state_next  = ST_RESET;
     
+    reg         [31:0]  ch0_start_ptr = {32{1'b0}};
+    reg         [31:0]  ch1_start_ptr = {32{1'b0}};
+    reg         [31:0]  ch2_start_ptr = {32{1'b0}};
+    reg         [31:0]  ch3_start_ptr = {32{1'b0}};
+    reg         [31:0]  ch4_start_ptr = {32{1'b0}};
+    reg         [31:0]  ch5_start_ptr = {32{1'b0}};
+    
     reg         [31:0]  ch0_frame_ptr = {32{1'b0}};
     reg         [31:0]  ch1_frame_ptr = {32{1'b0}};
     reg         [31:0]  ch2_frame_ptr = {32{1'b0}};
     reg         [31:0]  ch3_frame_ptr = {32{1'b0}};
     reg         [31:0]  ch4_frame_ptr = {32{1'b0}};
     reg         [31:0]  ch5_frame_ptr = {32{1'b0}};
+    
+    reg         [31:0]  ch0_act = {32{1'b0}};
+    reg         [31:0]  ch1_act = {32{1'b0}};
+    reg         [31:0]  ch2_act = {32{1'b0}};
+    reg         [31:0]  ch3_act = {32{1'b0}};
+    reg         [31:0]  ch4_act = {32{1'b0}};
+    reg         [31:0]  ch5_act = {32{1'b0}};
     
     reg         [31:0]  ch0_xfer_cnt = {32{1'b0}};
     reg         [31:0]  ch1_xfer_cnt = {32{1'b0}};
@@ -468,8 +501,16 @@ module vdma_ctrl #
     reg         [31:0]  byte_offset;
     reg         [22:0]  btt_cnt;
     
+    reg         [3:0]   dma_xfer_status = 4'h0;
     
-    wire        [71:0]  datmov_cmd =    { 
+    wire                ch0_ena     = ctrl_reg[0];
+    wire                ch1_ena     = ctrl_reg[1];
+    wire                ch2_ena     = ctrl_reg[2];
+    wire                ch3_ena     = ctrl_reg[3];
+    wire                ch4_ena     = ctrl_reg[4];
+    wire                ch5_ena     = ctrl_reg[5];
+    
+    wire        [71:0]  datmov_cmd  =   { 
                                             4'b0000,        // RSVD
                                             4'b0000,        // TAG (Command TAG)
                                             byte_offset,    // Memory address byte offset
@@ -481,12 +522,47 @@ module vdma_ctrl #
                                         };
     
     always @(posedge axi_aclk) begin
-        if (~axi_aresetn | ~ctrl_reg[31]) begin
+        if (~axi_aresetn) begin
             mm2s_xfer_last <= 1'b0;
-            mm2s_xfer_ena <= 1'b0;
-            
+            mm2s_xfer_ena  <= 1'b0;
             state <= ST_RESET;
         end else begin
+            
+            if (~ch0_ena) begin
+                ch0_xfer_cnt = ch0_btt;
+                ch0_start_ptr <= ch0_ping_buf_addr;
+                ch0_frame_ptr <= ch0_ping_buf_addr;
+            end
+            
+            if (~ch1_ena) begin
+                ch1_xfer_cnt = ch1_btt;
+                ch1_start_ptr <= ch1_ping_buf_addr;
+                ch1_frame_ptr <= ch1_ping_buf_addr;
+            end
+            
+            if (~ch2_ena) begin
+                ch2_xfer_cnt = ch2_btt;
+                ch2_start_ptr <= ch2_ping_buf_addr;
+                ch2_frame_ptr <= ch2_ping_buf_addr;
+            end
+            
+            if (~ch3_ena) begin
+                ch3_xfer_cnt = ch3_btt;
+                ch3_start_ptr <= ch3_ping_buf_addr;
+                ch3_frame_ptr <= ch3_ping_buf_addr;
+            end
+            
+            if (~ch4_ena) begin
+                ch4_xfer_cnt = ch4_btt;
+                ch4_start_ptr <= ch4_ping_buf_addr;
+                ch4_frame_ptr <= ch4_ping_buf_addr;
+            end
+            
+            if (~ch5_ena) begin
+                ch5_xfer_cnt = ch5_btt;
+                ch5_start_ptr <= ch5_ping_buf_addr;
+                ch5_frame_ptr <= ch5_ping_buf_addr;
+            end
             
             case (state)
                 
@@ -498,36 +574,28 @@ module vdma_ctrl #
                 
                 ST_RESET: begin
                     mm2s_xfer_last <= 1'b0;
-                    mm2s_xfer_ena <= 1'b0;
-                    
-                    ch0_xfer_cnt = ch0_btt;
-                    ch1_xfer_cnt = ch1_btt;
-                    ch2_xfer_cnt = ch2_btt;
-                    ch3_xfer_cnt = ch3_btt;
-                    ch4_xfer_cnt = ch4_btt;
-                    ch5_xfer_cnt = ch5_btt;
-                    
-                    ch0_frame_ptr <= ch0_ping_buf_addr;
-                    ch1_frame_ptr <= ch1_ping_buf_addr;
-                    ch2_frame_ptr <= ch2_ping_buf_addr;
-                    ch3_frame_ptr <= ch3_ping_buf_addr;
-                    ch4_frame_ptr <= ch4_ping_buf_addr;
-                    ch5_frame_ptr <= ch5_ping_buf_addr;
-                    
+                    mm2s_xfer_ena  <= 1'b0;
                     state <= ST_HANDLE_CH0;
                 end
                 
-                /* Handle CH0 */
+                
                 ST_HANDLE_CH0: begin
-                    if (~fifo_ch0_prog_full) begin
+                    if (~fifo_ch0_prog_full & ch0_ena) begin
                         slave_select <= CH0_FIFO_ID;
                         byte_offset <= ch0_frame_ptr;
                         if (ch0_xfer_cnt >= ch0_buf_size) begin
                             mm2s_xfer_last <= 1'b1;
                             ch0_xfer_cnt <= ch0_btt;
-                            ch0_frame_ptr <= ch0_config[31]? ch0_pong_buf_addr : ch0_ping_buf_addr;
+                            ch0_start_ptr <= ch0_buf_sel? ch0_pong_buf_addr : ch0_ping_buf_addr;
+                            ch0_frame_ptr <= ch0_buf_sel? ch0_pong_buf_addr : ch0_ping_buf_addr;
                         end else begin
-                            ch0_frame_ptr <= ch0_frame_ptr + ch0_addr_incr;
+                            
+                            if (ch0_interlaced && (ch0_xfer_cnt == (ch0_buf_size >> 1))) begin
+                                ch0_frame_ptr <= ch0_start_ptr + ch0_btt;
+                            end else begin
+                                ch0_frame_ptr <= ch0_frame_ptr + ch0_addr_incr;
+                            end
+                            
                             ch0_xfer_cnt <= ch0_xfer_cnt + ch0_btt;
                         end
                         btt_cnt <= ch0_btt;
@@ -538,17 +606,24 @@ module vdma_ctrl #
                     end
                 end
                 
-                /* Handle CH1 */
+                
                 ST_HANDLE_CH1: begin
-                    if (~fifo_ch1_prog_full) begin
+                    if (~fifo_ch1_prog_full & ch1_ena) begin
                         slave_select <= CH1_FIFO_ID;
                         byte_offset <= ch1_frame_ptr;
                         if (ch1_xfer_cnt >= ch1_buf_size) begin
                             mm2s_xfer_last <= 1'b1;
                             ch1_xfer_cnt <= ch1_btt;
-                            ch1_frame_ptr <= ch1_config[31]? ch1_pong_buf_addr : ch1_ping_buf_addr;
+                            ch1_start_ptr <= ch1_buf_sel? ch1_pong_buf_addr : ch1_ping_buf_addr;
+                            ch1_frame_ptr <= ch1_buf_sel? ch1_pong_buf_addr : ch1_ping_buf_addr;
                         end else begin
-                            ch1_frame_ptr <= ch1_frame_ptr + ch1_addr_incr;
+                            
+                            if (ch1_interlaced && (ch1_xfer_cnt == (ch1_buf_size >> 1))) begin
+                                ch1_frame_ptr <= ch1_start_ptr + ch1_btt;
+                            end else begin
+                                ch1_frame_ptr <= ch1_frame_ptr + ch1_addr_incr;
+                            end
+                            
                             ch1_xfer_cnt <= ch1_xfer_cnt + ch1_btt;
                         end
                         btt_cnt <= ch1_btt;
@@ -559,17 +634,24 @@ module vdma_ctrl #
                     end
                 end
                 
-                /* Handle CH2 */
+                
                 ST_HANDLE_CH2: begin
-                    if (~fifo_ch2_prog_full) begin
+                    if (~fifo_ch2_prog_full & ch2_ena) begin
                         slave_select <= CH2_FIFO_ID;
                         byte_offset <= ch2_frame_ptr;
                         if (ch2_xfer_cnt >= ch2_buf_size) begin
                             mm2s_xfer_last <= 1'b1;
                             ch2_xfer_cnt <= ch2_btt;
-                            ch2_frame_ptr <= ch2_config[31]? ch2_pong_buf_addr : ch2_ping_buf_addr;
+                            ch2_start_ptr <= ch2_buf_sel? ch2_pong_buf_addr : ch2_ping_buf_addr;
+                            ch2_frame_ptr <= ch2_buf_sel? ch2_pong_buf_addr : ch2_ping_buf_addr;
                         end else begin
-                            ch2_frame_ptr <= ch2_frame_ptr + ch2_addr_incr;
+                            
+                            if (ch2_interlaced && (ch2_xfer_cnt == (ch2_buf_size >> 1))) begin
+                                ch2_frame_ptr <= ch2_start_ptr + ch2_btt;
+                            end else begin
+                                ch2_frame_ptr <= ch2_frame_ptr + ch2_addr_incr;
+                            end
+                            
                             ch2_xfer_cnt <= ch2_xfer_cnt + ch2_btt;
                         end
                         btt_cnt <= ch2_btt;
@@ -580,17 +662,24 @@ module vdma_ctrl #
                     end
                 end
                 
-                /* Handle CH3 */
+                
                 ST_HANDLE_CH3: begin
-                    if (~fifo_ch3_prog_full) begin
+                    if (~fifo_ch3_prog_full & ch3_ena) begin
                         slave_select <= CH3_FIFO_ID;
                         byte_offset <= ch3_frame_ptr;
                         if (ch3_xfer_cnt >= ch3_buf_size) begin
                             mm2s_xfer_last <= 1'b1;
                             ch3_xfer_cnt <= ch3_btt;
-                            ch3_frame_ptr <= ch3_config[31]? ch3_pong_buf_addr : ch3_ping_buf_addr;
+                            ch3_start_ptr <= ch3_buf_sel? ch3_pong_buf_addr : ch3_ping_buf_addr;
+                            ch3_frame_ptr <= ch3_buf_sel? ch3_pong_buf_addr : ch3_ping_buf_addr;
                         end else begin
-                            ch3_frame_ptr <= ch3_frame_ptr + ch3_addr_incr;
+                            
+                            if (ch3_interlaced && (ch3_xfer_cnt == (ch3_buf_size >> 1))) begin
+                                ch3_frame_ptr <= ch3_start_ptr + ch3_btt;
+                            end else begin
+                                ch3_frame_ptr <= ch3_frame_ptr + ch3_addr_incr;
+                            end
+                            
                             ch3_xfer_cnt <= ch3_xfer_cnt + ch3_btt;
                         end
                         btt_cnt <= ch3_btt;
@@ -601,17 +690,24 @@ module vdma_ctrl #
                     end
                 end
                 
-                /* Handle CH4 */
+                
                 ST_HANDLE_CH4: begin
-                    if (~fifo_ch4_prog_full) begin
+                    if (~fifo_ch4_prog_full & ch4_ena) begin
                         slave_select <= CH4_FIFO_ID;
                         byte_offset <= ch4_frame_ptr;
                         if (ch4_xfer_cnt >= ch4_buf_size) begin
                             mm2s_xfer_last <= 1'b1;
                             ch4_xfer_cnt <= ch4_btt;
-                            ch4_frame_ptr <= ch4_config[31]? ch4_pong_buf_addr : ch4_ping_buf_addr;
+                            ch4_start_ptr <= ch4_buf_sel? ch4_pong_buf_addr : ch4_ping_buf_addr;
+                            ch4_frame_ptr <= ch4_buf_sel? ch4_pong_buf_addr : ch4_ping_buf_addr;
                         end else begin
-                            ch4_frame_ptr <= ch4_frame_ptr + ch4_addr_incr;
+                            
+                            if (ch4_interlaced && (ch4_xfer_cnt == (ch4_buf_size >> 1))) begin
+                                ch4_frame_ptr <= ch4_start_ptr + ch4_btt;
+                            end else begin
+                                ch4_frame_ptr <= ch4_frame_ptr + ch4_addr_incr;
+                            end
+                            
                             ch4_xfer_cnt <= ch4_xfer_cnt + ch4_btt;
                         end
                         btt_cnt <= ch4_btt;
@@ -622,17 +718,24 @@ module vdma_ctrl #
                     end
                 end
                 
-                /* Handle CH5 */
+                
                 ST_HANDLE_CH5: begin
-                    if (~fifo_ch5_prog_full) begin
+                    if (~fifo_ch5_prog_full & ch5_ena) begin
                         slave_select <= CH5_FIFO_ID;
                         byte_offset <= ch5_frame_ptr;
                         if (ch5_xfer_cnt >= ch5_buf_size) begin
                             mm2s_xfer_last <= 1'b1;
                             ch5_xfer_cnt <= ch5_btt;
-                            ch5_frame_ptr <= ch5_config[31]? ch5_pong_buf_addr : ch5_ping_buf_addr;
+                            ch5_start_ptr <= ch5_buf_sel? ch5_pong_buf_addr : ch5_ping_buf_addr;
+                            ch5_frame_ptr <= ch5_buf_sel? ch5_pong_buf_addr : ch5_ping_buf_addr;
                         end else begin
-                            ch5_frame_ptr <= ch5_frame_ptr + ch5_addr_incr;
+                            
+                            if (ch5_interlaced && (ch5_xfer_cnt == (ch5_buf_size >> 1))) begin
+                                ch5_frame_ptr <= ch5_start_ptr + ch5_btt;
+                            end else begin
+                                ch5_frame_ptr <= ch5_frame_ptr + ch5_addr_incr;
+                            end
+                            
                             ch5_xfer_cnt <= ch5_xfer_cnt + ch5_btt;
                         end
                         btt_cnt <= ch5_btt;
@@ -673,6 +776,7 @@ module vdma_ctrl #
                 ST_GET_MM2S_XFER_STAT: begin
                     if (s_axis_mm2s_sts_tvalid) begin
                         s_axis_mm2s_sts_tready <= 1'b0;
+                        dma_xfer_status <= s_axis_mm2s_sts_tdata[7:4];
                         if (s_axis_mm2s_sts_tdata[7:4] == DMA_XFER_OKAY) begin
                             state <= state_next;
                         end else begin
@@ -692,7 +796,7 @@ module vdma_ctrl #
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
     
     assign  stat_reg =  {
-                            4'b0000, state,
+                            dma_xfer_status, state,
                             {24{1'b0}}
                         };
     

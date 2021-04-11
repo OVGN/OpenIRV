@@ -2,11 +2,10 @@
  * ----------------------------------------------------------------------------
  *  Project:  OpenIRV
  *  Filename: axis_pipeliner.v
- *  Purpose:  Current module allows to convert any pipelined module to a true
- *            AXI4-Stream. The width of the pipeline input and output is 
- *            configurable. Data qualifier bits pipeline is integrated. 
+ *  Purpose:  Current module allows to convert any pipelined module into 
+ *            a true AXI4-Stream. Data qualifier bits are also integrated. 
  *            The main requirements for proper operation:
- *
+ *            
  *            - constant pipeline delay
  *            - clock enable input, that can be toggled any time
  * ----------------------------------------------------------------------------

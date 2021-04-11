@@ -1,8 +1,8 @@
 /* 
  * ----------------------------------------------------------------------------
  *  Project:  OpenIRV
- *  Filename: pipeline.v
- *  Purpose:  Simple width/depth configurable pipelining module.
+ *  Filename: yuv444_to_yuv422.v
+ *  Purpose:  Pipelined YUV444 to YUV422 stream color converter.
  * ----------------------------------------------------------------------------
  *  Copyright © 2020-2021, Vaagn Oganesyan <ovgn@protonmail.com>
  *  
@@ -24,42 +24,44 @@
 `timescale 1ps / 1ps
 
 
-module pipeline #
+module yuv444_to_yuv422
 (
-    parameter   PIPE_WIDTH  = 32,
-    parameter   PIPE_STAGES = 8
-)
-(
-    input   wire                        clk,
-    input   wire                        cen,
-    input   wire                        srst,
-    input   wire    [PIPE_WIDTH - 1:0]  pipe_in,
-    output  wire    [PIPE_WIDTH - 1:0]  pipe_out
+    input   wire            clk,
+    input   wire            cen,
+    
+    input   wire    [7:0]   y0_in,
+    input   wire    [7:0]   u0_in,
+    input   wire    [7:0]   v0_in,
+    
+    input   wire    [7:0]   y1_in,
+    input   wire    [7:0]   u1_in,
+    input   wire    [7:0]   v1_in,
+    
+    output  reg     [7:0]   y0_out = {8{1'b0}},
+    output  wire    [7:0]   u_out,
+    output  reg     [7:0]   y1_out = {8{1'b0}},
+    output  wire    [7:0]   v_out
 );
     
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
     
-    genvar i;
+    reg     [8:0]  u_sum = {9{1'b0}};
+    reg     [8:0]  v_sum = {9{1'b0}};
     
-    generate
-        for (i = 0; i < PIPE_WIDTH; i = i + 1) begin: loop
-        
-            reg [PIPE_STAGES - 1:0] pipe_gen;
-            
-            always @(posedge clk) begin
-                if (srst) begin
-                    pipe_gen <= {PIPE_STAGES{1'b0}};
-                end else begin
-                    if (cen) begin
-                        pipe_gen <= (PIPE_STAGES > 1)? {pipe_gen[PIPE_STAGES - 2:0], pipe_in[i]} : pipe_in[i];
-                    end
-                end
-            end
-            
-            assign pipe_out[i] = pipe_gen[PIPE_STAGES - 1];
+    
+    always @(posedge clk) begin
+        if (cen) begin
+            y0_out <= y0_in;
+            y1_out <= y1_in;
+            u_sum  <= u0_in + u1_in + 1'b1;
+            v_sum  <= v0_in + v1_in + 1'b1;
         end
-    endgenerate
+    end
     
+    
+    assign u_out = u_sum[8:1];
+    assign v_out = v_sum[8:1];
+
 endmodule
 
 /*-------------------------------------------------------------------------------------------------------------------------------------*/

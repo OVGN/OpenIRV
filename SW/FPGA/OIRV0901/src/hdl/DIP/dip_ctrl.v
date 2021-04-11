@@ -33,7 +33,7 @@ module dip_ctrl #
     (* X_INTERFACE_INFO = "xilinx.com:signal:reset:1.0 RSTIF RST" *)
     input   wire            axi_aresetn,
     
-    (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME CLKIF, ASSOCIATED_BUSIF S_AXI_LITE:S_AXIS_RAW:S_AXIS_EQUAL:M_AXIS_GAIN:M_AXIS_OFST:M_AXIS_AVGI:S_AXIS_AVGO:S_AXIS_MM2S:M_AXIS_S2MM:M_AXIS_MM2S_CMD:S_AXIS_MM2S_STS:M_AXIS_S2MM_CMD:S_AXIS_S2MM_STS, ASSOCIATED_RESET axi_aresetn" *)
+    (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME CLKIF, ASSOCIATED_BUSIF S_AXI_LITE:S_AXIS_RAW:S_AXIS_EQUAL:S_AXIS_EQUAL_X2:M_AXIS_GAIN:M_AXIS_OFST:M_AXIS_AVGI:S_AXIS_AVGO:S_AXIS_MM2S:M_AXIS_S2MM:M_AXIS_MM2S_CMD:S_AXIS_MM2S_STS:M_AXIS_S2MM_CMD:S_AXIS_S2MM_STS, ASSOCIATED_RESET axi_aresetn" *)
     (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 CLKIF CLK" *)
     input   wire            axi_aclk,
     
@@ -47,6 +47,7 @@ module dip_ctrl #
     input   wire            fifo_raw_prog_empty,
     input   wire            fifo_avgo_prog_empty,
     input   wire            fifo_equal_prog_empty,
+    input   wire            fifo_equal_x2_prog_empty,
     
     input   wire            fifo_avgi_prog_full,
     input   wire            fifo_gain_prog_full,
@@ -90,6 +91,14 @@ module dip_ctrl #
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_EQUAL TREADY" *)        output  wire            s_axis_equal_tready,
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_EQUAL TLAST"  *)        input   wire            s_axis_equal_tlast,
     (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_EQUAL TUSER"  *)        input   wire            s_axis_equal_tuser,
+    
+    /* Slave AXIS equalized image row (x2 upscaled) */
+    (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME S_AXIS_EQUAL_X2, TDATA_NUM_BYTES 4, TDEST_WIDTH 0, TID_WIDTH 0, TUSER_WIDTH 1, HAS_TREADY 1, HAS_TSTRB 0, HAS_TKEEP 0, HAS_TLAST 1" *)
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_EQUAL_X2 TDATA"  *)     input   wire    [31:0]  s_axis_equal_x2_tdata,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_EQUAL_X2 TVALID" *)     input   wire            s_axis_equal_x2_tvalid,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_EQUAL_X2 TREADY" *)     output  wire            s_axis_equal_x2_tready,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_EQUAL_X2 TLAST"  *)     input   wire            s_axis_equal_x2_tlast,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis:1.0 S_AXIS_EQUAL_X2 TUSER"  *)     input   wire            s_axis_equal_x2_tuser,
     
     /* Master AXIS sensor NUC gain row */
     (* X_INTERFACE_PARAMETER = "XIL_INTERFACENAME M_AXIS_GAIN, TDATA_NUM_BYTES 4, TDEST_WIDTH 0, TID_WIDTH 0, TUSER_WIDTH 0, HAS_TREADY 1, HAS_TSTRB 0, HAS_TKEEP 0, HAS_TLAST 1" *)
@@ -179,17 +188,19 @@ module dip_ctrl #
     reg     [31:0]  ctrl_reg        = {32{1'b0}};
     wire    [31:0]  stat_reg;
     
-    reg     [31:0]  raw_buf_addr    = {32{1'b0}};
-    reg     [31:0]  avg_buf_addr    = {32{1'b0}};
-    reg     [31:0]  gain_buf_addr   = {32{1'b0}};
-    reg     [31:0]  ofst_buf_addr   = {32{1'b0}};
-    reg     [31:0]  equal_buf_addr  = {32{1'b0}};
+    reg     [31:0]  raw_buf_addr      = {32{1'b0}};
+    reg     [31:0]  avg_buf_addr      = {32{1'b0}};
+    reg     [31:0]  gain_buf_addr     = {32{1'b0}};
+    reg     [31:0]  ofst_buf_addr     = {32{1'b0}};
+    reg     [31:0]  equal_buf_addr    = {32{1'b0}};
+    reg     [31:0]  equal_x2_buf_addr = {32{1'b0}};
     
-    reg     [31:0]  raw_btt   = {32{1'b0}};
-    reg     [31:0]  avg_btt   = {32{1'b0}};
-    reg     [31:0]  gain_btt  = {32{1'b0}};
-    reg     [31:0]  ofst_btt  = {32{1'b0}};
-    reg     [31:0]  equal_btt = {32{1'b0}};
+    reg     [31:0]  raw_btt      = {32{1'b0}};
+    reg     [31:0]  avg_btt      = {32{1'b0}};
+    reg     [31:0]  gain_btt     = {32{1'b0}};
+    reg     [31:0]  ofst_btt     = {32{1'b0}};
+    reg     [31:0]  equal_btt    = {32{1'b0}};
+    reg     [31:0]  equal_x2_btt = {32{1'b0}};
     
     
     always @(posedge axi_aclk) begin
@@ -221,17 +232,19 @@ module dip_ctrl #
                         6'd0  : ctrl_reg[i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : ctrl_reg[i*8 +: 8];
                      /* 6'd1  : read only register */
                         
-                        6'd2  : raw_buf_addr   [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : raw_buf_addr   [i*8 +: 8];
-                        6'd3  : avg_buf_addr   [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : avg_buf_addr   [i*8 +: 8];
-                        6'd4  : gain_buf_addr  [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : gain_buf_addr  [i*8 +: 8];
-                        6'd5  : ofst_buf_addr  [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : ofst_buf_addr  [i*8 +: 8];
-                        6'd6  : equal_buf_addr [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : equal_buf_addr [i*8 +: 8];
+                        6'd2  : raw_buf_addr      [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : raw_buf_addr      [i*8 +: 8];
+                        6'd3  : avg_buf_addr      [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : avg_buf_addr      [i*8 +: 8];
+                        6'd4  : gain_buf_addr     [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : gain_buf_addr     [i*8 +: 8];
+                        6'd5  : ofst_buf_addr     [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : ofst_buf_addr     [i*8 +: 8];
+                        6'd6  : equal_buf_addr    [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : equal_buf_addr    [i*8 +: 8];
+                        6'd7  : equal_x2_buf_addr [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : equal_x2_buf_addr [i*8 +: 8];
                         
-                        6'd7  : raw_btt   [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : raw_btt   [i*8 +: 8];
-                        6'd8  : avg_btt   [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : avg_btt   [i*8 +: 8];
-                        6'd9  : gain_btt  [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : gain_btt  [i*8 +: 8];
-                        6'd10 : ofst_btt  [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : ofst_btt  [i*8 +: 8];
-                        6'd11 : equal_btt [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : equal_btt [i*8 +: 8];
+                        6'd8  : raw_btt      [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : raw_btt      [i*8 +: 8];
+                        6'd9  : avg_btt      [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : avg_btt      [i*8 +: 8];
+                        6'd10 : gain_btt     [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : gain_btt     [i*8 +: 8];
+                        6'd11 : ofst_btt     [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : ofst_btt     [i*8 +: 8];
+                        6'd12 : equal_btt    [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : equal_btt    [i*8 +: 8];
+                        6'd13 : equal_x2_btt [i*8 +: 8] <= s_axi_wstrb[i]? s_axi_wdata[i*8 +: 8] : equal_x2_btt [i*8 +: 8];
                         
                         default: begin
                             /* TODO: do nothing? */
@@ -277,12 +290,14 @@ module dip_ctrl #
                     6'd4  : s_axi_rdata <= gain_buf_addr;
                     6'd5  : s_axi_rdata <= ofst_buf_addr;
                     6'd6  : s_axi_rdata <= equal_buf_addr;
+                    6'd7  : s_axi_rdata <= equal_x2_buf_addr;
                     
-                    6'd7  : s_axi_rdata <= raw_btt;
-                    6'd8  : s_axi_rdata <= avg_btt;
-                    6'd9  : s_axi_rdata <= gain_btt;
-                    6'd10 : s_axi_rdata <= ofst_btt;
-                    6'd11 : s_axi_rdata <= equal_btt;
+                    6'd8  : s_axi_rdata <= raw_btt;
+                    6'd9  : s_axi_rdata <= avg_btt;
+                    6'd10 : s_axi_rdata <= gain_btt;
+                    6'd11 : s_axi_rdata <= ofst_btt;
+                    6'd12 : s_axi_rdata <= equal_btt;
+                    6'd13 : s_axi_rdata <= equal_x2_btt;
                     
                     default: s_axi_rdata <= 32'hABADC0DE;
                 endcase
@@ -292,24 +307,26 @@ module dip_ctrl #
 
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
     
-    localparam  [3:0]   DMA_XFER_OKAY       = 4'b1000,
-                        DMA_XFER_SLVERR     = 4'b0100,
-                        DMA_XFER_DECERR     = 4'b0010,
-                        DMA_XFER_INTERR     = 4'b0001;
+    localparam  [3:0]   DMA_XFER_OKAY    = 4'b1000,
+                        DMA_XFER_SLVERR  = 4'b0100,
+                        DMA_XFER_DECERR  = 4'b0010,
+                        DMA_XFER_INTERR  = 4'b0001;
     
-    localparam  [1:0]   RAW_ROW_FIFO_ID     = 2'd0,
-                        AVGO_ROW_FIFO_ID    = 2'd1,
-                        EQUAL_ROW_FIFO_ID   = 2'd2;
+    localparam  [1:0]   RAW_FIFO_ID      = 2'd0,
+                        AVGO_FIFO_ID     = 2'd1,
+                        EQUAL_FIFO_ID    = 2'd2,
+                        EQUAL_X2_FIFO_ID = 2'd3;
     
-    localparam  [1:0]   GAIN_ROW_FIFO_ID    = 2'd0,
-                        OFST_ROW_FIFO_ID    = 2'd1,
-                        AVGI_ROW_FIFO_ID    = 2'd2;
+    localparam  [1:0]   GAIN_FIFO_ID     = 2'd0,
+                        OFST_FIFO_ID     = 2'd1,
+                        AVGI_FIFO_ID     = 2'd2;
     
     
-    reg             raw_fifo_load_ena   = 1'b0;
-    reg             raw_fifo_load_done  = 1'b1;
-    reg             raw_fifo_load_req   = 1'b0;
-    reg             equal_fifo_load_ena = 1'b0;
+    reg             raw_fifo_load_ena        = 1'b0;
+    reg             raw_fifo_load_done       = 1'b1;
+    reg             raw_fifo_load_req        = 1'b0;
+    reg             equal_fifo_load_ena      = 1'b0;
+    reg             equal_x2_fifo_load_ena   = 1'b0;
     
     
     // S2MM
@@ -321,51 +338,59 @@ module dip_ctrl #
     always @(*) begin
         (* parallel_case *)
         case (master_select)
-            RAW_ROW_FIFO_ID: begin
+            RAW_FIFO_ID: begin
                 m_axis_s2mm_tdata  = s_axis_raw_tdata;
                 m_axis_s2mm_tlast  = s_axis_raw_tlast;
                 m_axis_s2mm_tvalid = s_axis_raw_tvalid & s2mm_xfer_ena;
             end
             
-            AVGO_ROW_FIFO_ID: begin
+            AVGO_FIFO_ID: begin
                 m_axis_s2mm_tdata  = s_axis_avgo_tdata;
                 m_axis_s2mm_tlast  = s_axis_avgo_tlast;
                 m_axis_s2mm_tvalid = s_axis_avgo_tvalid & s2mm_xfer_ena;
             end
             
-            EQUAL_ROW_FIFO_ID: begin
+            EQUAL_FIFO_ID: begin
                 m_axis_s2mm_tdata  = s_axis_equal_tdata;
                 m_axis_s2mm_tlast  = s_axis_equal_tlast;
                 m_axis_s2mm_tvalid = s_axis_equal_tvalid & s2mm_xfer_ena;
             end
             
-            default: begin
-                m_axis_s2mm_tdata  = {32{1'b0}};
-                m_axis_s2mm_tlast  = 1'b1;
-                m_axis_s2mm_tvalid = 1'b0;
+            EQUAL_X2_FIFO_ID: begin
+                m_axis_s2mm_tdata  = s_axis_equal_x2_tdata;
+                m_axis_s2mm_tlast  = s_axis_equal_x2_tlast;
+                m_axis_s2mm_tvalid = s_axis_equal_x2_tvalid & s2mm_xfer_ena;
             end
+            
+            //default: begin
+            //    m_axis_s2mm_tdata  = {32{1'b0}};
+            //    m_axis_s2mm_tlast  = 1'b1;
+            //    m_axis_s2mm_tvalid = 1'b0;
+            //end
         endcase
     end
     
     
-    assign  s_axis_raw_tready   = (s2mm_xfer_ena & m_axis_s2mm_tready & (master_select == RAW_ROW_FIFO_ID)) | (~raw_fifo_load_ena);
-    assign  s_axis_avgo_tready  =  s2mm_xfer_ena & m_axis_s2mm_tready & (master_select == AVGO_ROW_FIFO_ID);
-    assign  s_axis_equal_tready = (s2mm_xfer_ena & m_axis_s2mm_tready & (master_select == EQUAL_ROW_FIFO_ID)) | (~equal_fifo_load_ena);
+    assign  s_axis_raw_tready      = (s2mm_xfer_ena & m_axis_s2mm_tready & (master_select == RAW_FIFO_ID)) | (~raw_fifo_load_ena);
+    assign  s_axis_avgo_tready     =  s2mm_xfer_ena & m_axis_s2mm_tready & (master_select == AVGO_FIFO_ID);
+    assign  s_axis_equal_tready    = (s2mm_xfer_ena & m_axis_s2mm_tready & (master_select == EQUAL_FIFO_ID))    | (~equal_fifo_load_ena);
+    assign  s_axis_equal_x2_tready = (s2mm_xfer_ena & m_axis_s2mm_tready & (master_select == EQUAL_X2_FIFO_ID)) | (~equal_x2_fifo_load_ena);
+    
     
     // MM2S
     reg             mm2s_xfer_ena = 1'b0;
     reg     [1:0]   slave_select  = 2'b00;
     
     assign  m_axis_gain_tdata   = s_axis_mm2s_tdata;
-    assign  m_axis_gain_tvalid  = s_axis_mm2s_tvalid & mm2s_xfer_ena & (slave_select == GAIN_ROW_FIFO_ID);
+    assign  m_axis_gain_tvalid  = s_axis_mm2s_tvalid & mm2s_xfer_ena & (slave_select == GAIN_FIFO_ID);
     assign  m_axis_gain_tlast   = s_axis_mm2s_tlast;
     
     assign  m_axis_ofst_tdata   = s_axis_mm2s_tdata;
-    assign  m_axis_ofst_tvalid  = s_axis_mm2s_tvalid & mm2s_xfer_ena & (slave_select == OFST_ROW_FIFO_ID);
+    assign  m_axis_ofst_tvalid  = s_axis_mm2s_tvalid & mm2s_xfer_ena & (slave_select == OFST_FIFO_ID);
     assign  m_axis_ofst_tlast   = s_axis_mm2s_tlast;
     
     assign  m_axis_avgi_tdata   = s_axis_mm2s_tdata;
-    assign  m_axis_avgi_tvalid  = s_axis_mm2s_tvalid & mm2s_xfer_ena & (slave_select == AVGI_ROW_FIFO_ID);
+    assign  m_axis_avgi_tvalid  = s_axis_mm2s_tvalid & mm2s_xfer_ena & (slave_select == AVGI_FIFO_ID);
     assign  m_axis_avgi_tlast   = s_axis_mm2s_tlast;
     
     
@@ -374,10 +399,10 @@ module dip_ctrl #
     always @(*) begin
         (* parallel_case *)
         case (slave_select)
-            GAIN_ROW_FIFO_ID: slave_axis_tready = m_axis_gain_tready;
-            OFST_ROW_FIFO_ID: slave_axis_tready = m_axis_ofst_tready;
-            AVGI_ROW_FIFO_ID: slave_axis_tready = m_axis_avgi_tready;
-            default:          slave_axis_tready = 1'b0;
+            GAIN_FIFO_ID: slave_axis_tready = m_axis_gain_tready;
+            OFST_FIFO_ID: slave_axis_tready = m_axis_ofst_tready;
+            AVGI_FIFO_ID: slave_axis_tready = m_axis_avgi_tready;
+            default:      slave_axis_tready = 1'b0;
         endcase
     end
     
@@ -438,11 +463,16 @@ module dip_ctrl #
     
     always @(posedge axi_aclk) begin
         if (~axi_aresetn | ~ctrl_reg[31]) begin
-            equal_fifo_load_ena <= 1'b0;
+            equal_fifo_load_ena    <= 1'b0;
+            equal_x2_fifo_load_ena <= 1'b0;
         end else begin
             /* Equalized buffer refresh flag */
-            if (s_axis_equal_tvalid & s_axis_equal_tready & s_axis_equal_tuser) begin    // s_axis_equal_tuser - indicates last pixels of the frame
+            if (s_axis_equal_tvalid & s_axis_equal_tready & s_axis_equal_tuser) begin               // tuser - indicates last pixels of the frame
                 equal_fifo_load_ena <= ctrl_reg[1];
+            end
+            
+            if (s_axis_equal_x2_tvalid & s_axis_equal_x2_tready & s_axis_equal_x2_tuser) begin      // tuser - indicates last pixels of the frame
+                equal_x2_fifo_load_ena <= ctrl_reg[1];
             end
         end
     end
@@ -471,19 +501,21 @@ module dip_ctrl #
                         
                         ST_GET_RAW_ROW          = 5'd14,
                         ST_GET_AVGO_ROW         = 5'd15,
-                        ST_GET_EQUAL_ROW        = 5'd16;
+                        ST_GET_EQUAL_ROW        = 5'd16,
+                        ST_GET_EQUAL_X2_ROW     = 5'd17;
                         
     reg         [4:0]   state       = ST_RESET;
     reg         [4:0]   state_next  = ST_RESET;
     
     reg                 eol_flag = 1'b0;
     
-    reg         [31:0]  raw_frame_ptr   = {32{1'b0}};
-    reg         [31:0]  avgo_frame_ptr  = {32{1'b0}};
-    reg         [31:0]  gain_frame_ptr  = {32{1'b0}};
-    reg         [31:0]  ofst_frame_ptr  = {32{1'b0}};
-    reg         [31:0]  avgi_frame_ptr  = {32{1'b0}};
-    reg         [31:0]  equal_frame_ptr = {32{1'b0}};
+    reg         [31:0]  raw_frame_ptr      = {32{1'b0}};
+    reg         [31:0]  avgo_frame_ptr     = {32{1'b0}};
+    reg         [31:0]  gain_frame_ptr     = {32{1'b0}};
+    reg         [31:0]  ofst_frame_ptr     = {32{1'b0}};
+    reg         [31:0]  avgi_frame_ptr     = {32{1'b0}};
+    reg         [31:0]  equal_frame_ptr    = {32{1'b0}};
+    reg         [31:0]  equal_x2_frame_ptr = {32{1'b0}};
     
     reg         [31:0]  byte_offset;
     reg         [22:0]  btt_cnt;
@@ -510,12 +542,13 @@ module dip_ctrl #
             
             /* Reset frame pointers at the SOF */
             if (sof_strb) begin
-                raw_frame_ptr   <= raw_buf_addr;
-                avgo_frame_ptr  <= avg_buf_addr;
-                gain_frame_ptr  <= gain_buf_addr;
-                ofst_frame_ptr  <= ofst_buf_addr;
-                avgi_frame_ptr  <= avg_buf_addr;
-                equal_frame_ptr <= equal_buf_addr;
+                raw_frame_ptr      <= raw_buf_addr;
+                avgo_frame_ptr     <= avg_buf_addr;
+                gain_frame_ptr     <= gain_buf_addr;
+                ofst_frame_ptr     <= ofst_buf_addr;
+                avgi_frame_ptr     <= avg_buf_addr;
+                equal_frame_ptr    <= equal_buf_addr;
+                equal_x2_frame_ptr <= equal_x2_buf_addr;
                 
                 eol_flag <= 1'b1;   // to fill all FIFOs at SOF
             end
@@ -555,7 +588,7 @@ module dip_ctrl #
                 
                 ST_SEND_AVGI_ROW: begin
                     if (~fifo_avgi_prog_full) begin
-                        slave_select <= AVGI_ROW_FIFO_ID;
+                        slave_select <= AVGI_FIFO_ID;
                         byte_offset <= avgi_frame_ptr;
                         avgi_frame_ptr <= avgi_frame_ptr + avg_btt;
                         btt_cnt <= avg_btt;
@@ -568,7 +601,7 @@ module dip_ctrl #
                 
                 ST_GET_RAW_ROW: begin
                     if (~fifo_raw_prog_empty & raw_fifo_load_ena) begin
-                        master_select <= RAW_ROW_FIFO_ID;
+                        master_select <= RAW_FIFO_ID;
                         byte_offset <= raw_frame_ptr;
                         raw_frame_ptr <= raw_frame_ptr + raw_btt;
                         btt_cnt <= raw_btt;
@@ -581,7 +614,7 @@ module dip_ctrl #
                 
                 ST_SEND_GAIN_ROW: begin
                     if (~fifo_gain_prog_full) begin
-                        slave_select <= GAIN_ROW_FIFO_ID;        
+                        slave_select <= GAIN_FIFO_ID;        
                         byte_offset <= gain_frame_ptr;      
                         gain_frame_ptr <= gain_frame_ptr + gain_btt;
                         btt_cnt <= gain_btt;
@@ -594,7 +627,7 @@ module dip_ctrl #
                 
                 ST_SEND_OFST_ROW: begin     
                     if (~fifo_ofst_prog_full) begin
-                        slave_select <= OFST_ROW_FIFO_ID;        
+                        slave_select <= OFST_FIFO_ID;        
                         byte_offset <= ofst_frame_ptr;      
                         ofst_frame_ptr <= ofst_frame_ptr + ofst_btt;
                         btt_cnt <= ofst_btt;
@@ -607,7 +640,7 @@ module dip_ctrl #
                 
                 ST_GET_AVGO_ROW: begin
                     if (~fifo_avgo_prog_empty) begin
-                        master_select <= AVGO_ROW_FIFO_ID;
+                        master_select <= AVGO_FIFO_ID;
                         byte_offset <= avgo_frame_ptr;
                         avgo_frame_ptr <= avgo_frame_ptr + avg_btt;
                         btt_cnt <= avg_btt;
@@ -618,15 +651,25 @@ module dip_ctrl #
                     end
                 end
                 
-                /* We should monitor state of this FIFO not only after EOL,
-                 * because due to data processing delay this FIFO will be 
-                 * filled with a latency of several rows */
                 ST_GET_EQUAL_ROW: begin
                     if (~fifo_equal_prog_empty & equal_fifo_load_ena) begin
-                        master_select <= EQUAL_ROW_FIFO_ID;        
+                        master_select <= EQUAL_FIFO_ID;        
                         byte_offset <= equal_frame_ptr;      
                         equal_frame_ptr <= equal_frame_ptr + equal_btt;
                         btt_cnt <= equal_btt;
+                        state <= ST_DATMOV_S2MM_CMD_0;
+                        state_next <= ST_GET_EQUAL_X2_ROW;      
+                    end else begin      
+                        state <= ST_GET_EQUAL_X2_ROW;       
+                    end
+                end
+                
+                ST_GET_EQUAL_X2_ROW: begin
+                    if (~fifo_equal_x2_prog_empty & equal_x2_fifo_load_ena) begin
+                        master_select <= EQUAL_X2_FIFO_ID;        
+                        byte_offset <= equal_x2_frame_ptr;      
+                        equal_x2_frame_ptr <= equal_x2_frame_ptr + equal_x2_btt;
+                        btt_cnt <= equal_x2_btt;
                         state <= ST_DATMOV_S2MM_CMD_0;
                         state_next <= ST_SWITCH_CNSMR;      
                     end else begin      
@@ -726,7 +769,7 @@ module dip_ctrl #
                             3'b000, state,
                             16'h0000,
                             6'b000000,
-                            equal_fifo_load_ena,
+                            equal_fifo_load_ena & equal_x2_fifo_load_ena,
                             raw_fifo_load_done
                         };
 endmodule
